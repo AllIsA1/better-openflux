@@ -10,9 +10,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -71,18 +73,19 @@ type panelStatus struct {
 
 // updater keeps the panel's OpenFlux core in step with the pinned build.
 type updater struct {
-	api   panelAPI
-	arch  string
-	path  string // state file
-	build coreBuild
-	now   func() time.Time
+	api       panelAPI
+	arch      string
+	path      string // state file
+	build     coreBuild
+	now       func() time.Time
+	pollEvery time.Duration // how often to look whether a slow download has finished
 
 	mu sync.Mutex
 	st state
 }
 
 func newUpdater(api panelAPI, arch, statePath string, build coreBuild) *updater {
-	u := &updater{api: api, arch: arch, path: statePath, build: build, now: time.Now}
+	u := &updater{api: api, arch: arch, path: statePath, build: build, now: time.Now, pollEvery: 5 * time.Second}
 	if raw, err := os.ReadFile(statePath); err == nil {
 		_ = json.Unmarshal(raw, &u.st)
 	}
@@ -165,13 +168,52 @@ func (u *updater) install(ctx context.Context, want string, force bool) error {
 	}
 	body := map[string]string{"url": u.build.url(u.arch), "sha256": want}
 	if err := u.api.Do(ctx, http.MethodPost, "/tunnel/openflux/download", body, nil); err != nil {
-		return fmt.Errorf("the panel could not download the core: %w", err)
+		if !outcomeUnknown(err) {
+			return fmt.Errorf("the panel could not download the core: %w", err)
+		}
+		// The panel answers only when the file is there, and a download over a slow link takes longer than a
+		// call may. It goes on without us and puts the file in place only once the hash matches, so wait for it.
+		if err := u.waitForCore(ctx); err != nil {
+			return fmt.Errorf("the panel did not finish the download: %w", err)
+		}
 	}
 	if err := u.api.Do(ctx, http.MethodGet, "/tunnel/openflux/status", nil, &ps); err != nil || !ps.BinaryExists {
 		return errors.New("the core was downloaded but the panel does not show it")
 	}
 	u.st.Version, u.st.SHA256, u.st.InstalledAt = u.build.Version, want, u.now().UTC()
 	return nil
+}
+
+// outcomeUnknown says whether a failed call may still have done its work: it timed out (here or at the
+// plugin system's gateway) rather than being refused.
+func outcomeUnknown(err error) bool {
+	var ne net.Error
+	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &ne) && ne.Timeout()) {
+		return true
+	}
+	msg := err.Error()
+	for _, code := range []string{"HTTP 502", "HTTP 503", "HTTP 504"} {
+		if strings.Contains(msg, code) {
+			return true
+		}
+	}
+	return false
+}
+
+// waitForCore polls until the panel shows a core or the context ends. The file the panel keeps in place was
+// removed before the download, so one that appears now is the downloaded one.
+func (u *updater) waitForCore(ctx context.Context) error {
+	for {
+		var ps panelStatus
+		if err := u.api.Do(ctx, http.MethodGet, "/tunnel/openflux/status", nil, &ps); err == nil && ps.BinaryExists {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(u.pollEvery):
+		}
+	}
 }
 
 // run checks at start and every few hours; a failed check is tried again sooner.

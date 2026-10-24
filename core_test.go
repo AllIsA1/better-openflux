@@ -297,3 +297,74 @@ func TestPageAndCallsAreServed(t *testing.T) {
 		t.Errorf("unknown call answered %d", res.StatusCode)
 	}
 }
+
+// slowPanel answers the download call with a timeout, as a gateway does for a download that takes long, and
+// has the core in place after a few status calls, as the panel does when it finishes.
+type slowPanel struct {
+	fakePanel
+	after   int // status calls until the file is there
+	polls   int
+	timeout error
+}
+
+func (p *slowPanel) Do(ctx context.Context, method, path string, in, out any) error {
+	if path == "/tunnel/openflux/download" {
+		p.calls = append(p.calls, call{method: method, path: path})
+		return p.timeout
+	}
+	if path == "/tunnel/openflux/status" && p.calls != nil && len(p.paths()) > 0 && p.paths()[len(p.paths())-1] == "POST /tunnel/openflux/download" {
+		p.polls++
+		p.exists = p.after > 0 && p.polls >= p.after
+	}
+	return p.fakePanel.Do(ctx, method, path, in, out)
+}
+
+func TestASlowDownloadIsWaitedForNotRepeated(t *testing.T) {
+	for _, timeout := range []error{context.DeadlineExceeded, errors.New("panel answered HTTP 504 for POST /tunnel/openflux/download")} {
+		p := &slowPanel{after: 3, timeout: timeout}
+		u := newTestUpdater(t, &p.fakePanel)
+		u.api = p
+		u.pollEvery = time.Millisecond
+		if err := u.ensure(context.Background(), false); err != nil {
+			t.Fatalf("%v: %v", timeout, err)
+		}
+		downloads := 0
+		for _, c := range p.calls {
+			if c.path == "/tunnel/openflux/download" {
+				downloads++
+			}
+		}
+		if downloads != 1 || u.st.SHA256 != testBuild.SHA256["amd64"] || u.st.LastError != "" {
+			t.Errorf("%v: downloads = %d, state = %+v", timeout, downloads, u.st)
+		}
+	}
+}
+
+func TestAMissingCoreAfterTheWaitIsAnError(t *testing.T) {
+	p := &slowPanel{after: 0, timeout: context.DeadlineExceeded}
+	u := newTestUpdater(t, &p.fakePanel)
+	u.api = p
+	u.pollEvery = time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
+	defer cancel()
+	err := u.ensure(ctx, false)
+	if err == nil || !strings.Contains(err.Error(), "did not finish") || u.st.SHA256 != "" {
+		t.Errorf("err = %v, state = %+v", err, u.st)
+	}
+}
+
+func TestARefusedDownloadIsNotWaitedFor(t *testing.T) {
+	p := &fakePanel{fail: map[string]error{"/tunnel/openflux/download": errors.New("tunnel: sha256 mismatch: expected a, got b")}}
+	u := newTestUpdater(t, p)
+	u.pollEvery = time.Hour // would hang the test if it waited
+	done := make(chan error, 1)
+	go func() { done <- u.ensure(context.Background(), false) }()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "sha256 mismatch") {
+			t.Errorf("err = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("a refused download was waited for")
+	}
+}
