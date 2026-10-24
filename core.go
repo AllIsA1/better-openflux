@@ -32,8 +32,8 @@ var pinned = coreBuild{
 	Commit:  "4f9c786cdd1d9fcd0c133e2e0fec0c5a12522610",
 	Release: "core-v0.13.0-1",
 	SHA256: map[string]string{
-		"amd64": "133e0c17eb07e5abf8effd0d563de1f38f18cf65c66f0124ba8bc00fb5b0051d",
-		"arm64": "beb496161cccf146e0527c0edd30f7d9a2f77c2a1f5376d2c04286f82b96c179",
+		"amd64": "1a179c348eda91635dc86dfc66f423daeb05af466705a64a72b36f5d23aeceea",
+		"arm64": "6f7cb7d8c6e76aa46ba49079f579aa64dabfaf05674f6c4c150b45b657b078a9",
 	},
 }
 
