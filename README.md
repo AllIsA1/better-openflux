@@ -19,6 +19,12 @@ Mail.ru and Cups.online), several links per carrier and the l3 exit mode.
 The inbound form (the new carriers, several links per carrier, the l3/l4 choice) is part of the panel build `…-plugins.8` and
 later; the plugin only brings the program those fields need.
 
+## Requires
+
+Better OpenFlux declares `"requires": ["better-cores"]`: the plugin system (host-5 and later) installs and turns it on only while
+[Better Cores](https://github.com/AllIsA1/better-cores) is installed and on, and will not turn that one off or remove it while this
+is installed.
+
 ## Permissions
 
 `api:openflux:read` (is a core there) and `api:openflux:write` (download a core by a link and a hash, remove it) — the narrow
