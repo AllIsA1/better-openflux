@@ -1,7 +1,7 @@
 {
   "id": "better-openflux",
   "name": "Better OpenFlux",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "apiVersion": "1",
   "description": "Keeps the OpenFlux exit program of the panel at OpenFlux v0.13.0 (more carriers, several links per carrier, l3). The panel downloads the reviewed build itself and checks its hash; switch the plugin off and the core stays as it is.",
   "author": "AllIsA1",
@@ -13,16 +13,6 @@
   },
   "permissions": [
     "api:openflux:read",
-    "api:openflux:write",
-    "ui:menu"
-  ],
-  "ui": {
-    "menu": [
-      {
-        "title": "Better OpenFlux",
-        "icon": "thunderbolt",
-        "path": "/ui/index.html"
-      }
-    ]
-  }
+    "api:openflux:write"
+  ]
 }

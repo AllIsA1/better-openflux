@@ -12,7 +12,7 @@ Mail.ru and Cups.online), several links per carrier and the l3 exit mode.
   in the plugin matches.
 - It checks at start and every six hours. It replaces a core it did not install (the one that came with the panel) once, and leaves
   alone the one it installed, so a file you upload yourself on Settings → Cores stays until a newer plugin version brings a newer
-  core. The page of the plugin has an **Install now** button that installs again.
+  core. (The plugin has no page of its own; restarting it checks again.)
 - Exits that use the file are stopped when it is replaced and started again by the panel on its next pass.
 - Switch the plugin off or remove it and the core stays as it is.
 
@@ -23,7 +23,7 @@ later; the plugin only brings the program those fields need.
 
 `api:openflux:read` (is a core there) and `api:openflux:write` (download a core by a link and a hash, remove it) — the narrow
 permissions of the plugin system for exactly these panel routes and no other. **Write is a dangerous permission**: the panel runs
-this program as root, so the operator confirms it when installing. `ui:menu` shows the status page.
+this program as root, so the operator confirms it when installing.
 
 ## The core
 
