@@ -1,9 +1,9 @@
 {
   "id": "better-openflux",
   "name": "Better OpenFlux",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "apiVersion": "1",
-  "description": "Keeps the OpenFlux exit program of the panel at OpenFlux v0.13.0 (more carriers, several links per carrier, l3). The panel downloads the reviewed build itself and checks its hash; switch the plugin off and the core stays as it is.",
+  "description": "Does nothing now. It used to bring OpenFlux v0.13.0 to the panel; since lucx.326 the panel ships that version itself. Kept installed for the time being; it can be removed.",
   "author": "AllIsA1",
   "license": "MIT",
   "type": "process",
@@ -11,11 +11,5 @@
   "run": {
     "command": "bin/${arch}/betteropenflux"
   },
-  "permissions": [
-    "api:openflux:read",
-    "api:openflux:write"
-  ],
-  "requires": [
-    "better-cores"
-  ]
+  "permissions": []
 }

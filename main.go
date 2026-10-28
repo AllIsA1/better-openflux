@@ -4,30 +4,15 @@
 package main
 
 import (
-	"context"
 	"log"
-	"path/filepath"
-	"runtime"
+	"net/http"
 )
 
+// Since lucx.326 the panel ships OpenFlux v0.13.0 itself, so there is nothing left for this plugin to do.
+// It only answers the plugin system's health check until it is removed.
 func main() {
-	var api panelAPI
-	if p, err := NewPanel(); err != nil {
-		log.Printf("better-openflux: %v; the core is left as it is", err)
-		api = failingPanel{err}
-	} else {
-		api = p
-	}
-	u := newUpdater(api, runtime.GOARCH, filepath.Join(StateDir(), "state.json"), pinned)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go u.run(ctx)
-	log.Printf("better-openflux plugin ready (core %s)", pinned.Version)
-	if err := Serve(newMux(u)); err != nil {
+	log.Print("better-openflux plugin ready (nothing to do: the panel brings OpenFlux v0.13.0 itself)")
+	if err := Serve(http.NotFoundHandler()); err != nil {
 		log.Fatal(err)
 	}
 }
-
-type failingPanel struct{ err error }
-
-func (f failingPanel) Do(context.Context, string, string, any, any) error { return f.err }
